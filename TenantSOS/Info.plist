@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleDisplayName</key>
+    <string>Tenant SOS</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>Default Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>location</string>
+        <string>remote-notification</string>
+        <string>fetch</string>
+    </array>
+    <key>UILaunchScreen</key>
+    <dict>
+        <key>UIColorName</key>
+        <string>LaunchScreenBackground</string>
+        <key>UIImageName</key>
+        <string>LaunchIcon</string>
+    </dict>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Tenant SOS uses your location to provide you with relevant state and local laws as you travel. Location tracking helps us notify you about important legal changes when you enter a new state. Your location data stays on your device and is never shared.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Tenant SOS needs your location to show you relevant laws and regulations for your current state. This helps ensure you always have access to the correct legal information wherever you are.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Enable background location to receive automatic notifications when you enter a new state with different laws and regulations. This ensures you're always informed about local legal requirements.</string>
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>Tenant SOS sends notifications to alert you about law changes, document deadlines, and when you enter a new state with different regulations.</string>
+    <key>NSMotionUsageDescription</key>
+    <string>Tenant SOS uses motion detection to optimize battery usage while tracking your location in the background.</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>mailto</string>
+        <string>tel</string>
+        <string>sms</string>
+    </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>tenantsos</string>
+            </array>
+            <key>CFBundleURLName</key>
+            <string>com.tenantsos.app</string>
+        </dict>
+    </array>
+    <key>NSCameraUsageDescription</key>
+    <string>Tenant SOS uses the camera to scan documents for quick data entry.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Tenant SOS needs access to your photo library to attach images to maintenance requests and documents.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Tenant SOS saves generated documents to your photo library for easy access.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>Tenant SOS can import contact information to quickly fill landlord or tenant details in documents.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Tenant SOS can add important deadlines and reminders to your calendar.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Tenant SOS uses speech recognition for voice search of laws and regulations.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Tenant SOS needs microphone access for voice search functionality.</string>
+</dict>
+</plist>

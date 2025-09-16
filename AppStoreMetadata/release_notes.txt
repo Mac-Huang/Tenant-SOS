@@ -1,0 +1,30 @@
+RELEASE NOTES
+
+Version 1.0.0 - Initial Release
+================================
+Welcome to Tenant SOS! We're excited to launch your personal legal assistant.
+
+NEW FEATURES:
+• Automatic state detection with location services
+• Real-time law updates for 5 major states (CA, TX, NY, FL, IL)
+• 10 document templates with state-specific formatting
+• Smart search across all legal categories
+• Push notifications for law changes
+• Offline access to saved laws
+• Dark mode support
+
+INITIAL CATEGORIES:
+• Tenant Rights & Rental Laws
+• Traffic & Vehicle Regulations
+• Employment Basics
+
+COMING SOON:
+• Additional states coverage
+• Apple Watch companion app
+• Siri Shortcuts integration
+• AI-powered legal Q&A
+
+We're committed to making legal information accessible to everyone. Please rate and review to help us improve!
+
+For support: support@tenantsos.com
+Website: https://tenantsos.com
