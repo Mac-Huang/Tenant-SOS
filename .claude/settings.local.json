@@ -6,7 +6,12 @@
       "Bash(git init:*)",
       "Bash(git config:*)",
       "Bash(git remote add:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(xcrun simctl list:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(rm:*)",
+      "Read(//Users/Patron/Desktop/develop/**)",
+      "Read(//Users/Patron/Desktop/**)"
     ],
     "deny": [],
     "ask": []

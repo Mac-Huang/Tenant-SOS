@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24299" systemVersion="24G84" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="Bookmark" representedClassName="Bookmark" syncable="YES">
+        <attribute name="dateAdded" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="notes" optional="YES" attributeType="String"/>
+        <relationship name="law" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Law" inverseName="bookmarks" inverseEntity="Law"/>
+    </entity>
+    <entity name="Document" representedClassName="Document" syncable="YES">
+        <attribute name="content" optional="YES" attributeType="Binary"/>
+        <attribute name="generatedDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="state" optional="YES" attributeType="String"/>
+        <attribute name="templateName" optional="YES" attributeType="String"/>
+        <attribute name="title" optional="YES" attributeType="String"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="Law" representedClassName="Law" syncable="YES">
+        <attribute name="effectiveDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="lawDescription" optional="YES" attributeType="String"/>
+        <attribute name="statute" optional="YES" attributeType="String"/>
+        <attribute name="title" optional="YES" attributeType="String"/>
+        <relationship name="bookmarks" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Bookmark" inverseName="law" inverseEntity="Bookmark"/>
+        <relationship name="category" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LawCategory" inverseName="laws" inverseEntity="LawCategory"/>
+        <relationship name="state" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="State" inverseName="laws" inverseEntity="State"/>
+    </entity>
+    <entity name="LawCategory" representedClassName="LawCategory" syncable="YES">
+        <attribute name="icon" optional="YES" attributeType="String"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="order" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="laws" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Law" inverseName="category" inverseEntity="Law"/>
+    </entity>
+    <entity name="State" representedClassName="State" syncable="YES">
+        <attribute name="code" optional="YES" attributeType="String"/>
+        <attribute name="lastUpdated" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <relationship name="laws" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Law" inverseName="state" inverseEntity="Law"/>
+    </entity>
+    <entity name="UserProfile" representedClassName="UserProfile" syncable="YES">
+        <attribute name="driverLicenseStatus" optional="YES" attributeType="String"/>
+        <attribute name="employmentType" optional="YES" attributeType="String"/>
+        <attribute name="frequentStates" optional="YES" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromDataTransformer" customClassName="[String]"/>
+        <attribute name="homeState" optional="YES" attributeType="String"/>
+        <attribute name="housingStatus" optional="YES" attributeType="String"/>
+        <attribute name="notificationPreference" optional="YES" attributeType="String"/>
+    </entity>
+</model>
