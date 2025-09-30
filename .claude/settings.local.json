@@ -11,7 +11,13 @@
       "Bash(xcodebuild:*)",
       "Bash(rm:*)",
       "Read(//Users/Patron/Desktop/develop/**)",
-      "Read(//Users/Patron/Desktop/**)"
+      "Read(//Users/Patron/Desktop/**)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(GIT_ASKPASS=echo git push -u origin main)",
+      "Bash(gh auth:*)",
+      "Bash(brew install:*)"
     ],
     "deny": [],
     "ask": []
