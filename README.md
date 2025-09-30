@@ -145,7 +145,6 @@ open Tenant-SOS/Tenant-SOS.xcodeproj
 
 <div align="center">
   <img src="AppStoreMetadata/Screenshots/homepage.png" width="250" alt="Home Dashboard">
-  <img src="AppStoreMetadata/Screenshots/search_page.png" width="250" alt="Search Laws">
   <img src="AppStoreMetadata/Screenshots/document_page.png" width="250" alt="Document Generator">
 </div>
 
