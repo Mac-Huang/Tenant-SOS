@@ -8,7 +8,7 @@
 
   **Your Personal Legal Assistant for State Laws & Tenant Rights**
 
-  [![iOS](https://img.shields.io/badge/iOS-16.0+-blue.svg)](https://www.apple.com/ios/)
+  [![iOS](https://img.shields.io/badge/iOS-26.0-blue.svg)](https://www.apple.com/ios/)
   [![Swift](https://img.shields.io/badge/Swift-5.9-orange.svg)](https://swift.org)
   [![SwiftUI](https://img.shields.io/badge/SwiftUI-5.0-blue.svg)](https://developer.apple.com/xcode/swiftui/)
   [![Firebase](https://img.shields.io/badge/Firebase-10.0+-yellow.svg)](https://firebase.google.com)
@@ -18,7 +18,7 @@
 
 Tenant SOS is a comprehensive iOS application that provides instant access to state-specific legal information, tenant rights, and legal document generation. As users travel between states, the app automatically detects their location and provides relevant local laws, ensuring they're always informed of their rights and responsibilities.
 
-### 🎯 Problems We Solve
+### 🎯 Problems I Solve
 
 - **Legal Confusion Across States**: Different states have vastly different laws regarding tenant rights, traffic regulations, and employment rules
 - **Lack of Accessible Legal Information**: Legal documents and statutes are often written in complex language that's hard to understand
