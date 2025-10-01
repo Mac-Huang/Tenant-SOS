@@ -1,7 +1,7 @@
 # Tenant SOS - Legal Rights Guide 🛡️
 
 <div align="center">
-  <img src="Tenant-SOS/AppStoreMetadata/Tenant_SOS_Logo.png" width="120" height="120" alt="Tenant SOS Logo">
+  <img src="Tenant-SOS/AppStoreMetadata/enant_SOS_Logo_1024.icon" width="120" height="120" alt="Tenant SOS Logo">
 
   **Your Personal Legal Assistant for State Laws & Tenant Rights**
 
