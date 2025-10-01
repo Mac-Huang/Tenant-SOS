@@ -1,7 +1,7 @@
 # Tenant SOS - Legal Rights Guide 🛡️
 
 <div align="center">
-  <img src="AppStoreMetadata/AppIcon.png" width="120" height="120" alt="Tenant SOS Logo">
+  <img src="AppStoreMetadata/Tenant_SOS_Logo.png" width="120" height="120" alt="Tenant SOS Logo">
 
   **Your Personal Legal Assistant for State Laws & Tenant Rights**
 
@@ -145,7 +145,6 @@ open Tenant-SOS/Tenant-SOS.xcodeproj
 
 <div align="center">
   <img src="AppStoreMetadata/Screenshots/homepage.png" width="250" alt="Home Dashboard">
-  <img src="AppStoreMetadata/Screenshots/search_page.png" width="250" alt="Search Laws">
   <img src="AppStoreMetadata/Screenshots/document_page.png" width="250" alt="Document Generator">
 </div>
 
