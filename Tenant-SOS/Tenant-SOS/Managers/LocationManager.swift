@@ -41,12 +41,13 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private func setupLocationManager() {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.distanceFilter = 5000
+        locationManager.distanceFilter = 100 // More frequent updates
         locationManager.pausesLocationUpdatesAutomatically = true
-        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.allowsBackgroundLocationUpdates = false // Don't need background for now
         locationManager.showsBackgroundLocationIndicator = false
 
         authorizationStatus = locationManager.authorizationStatus
+        // Don't start monitoring here - wait for explicit request
     }
 
     private func setupGeofencing() {
@@ -66,10 +67,8 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     func requestPermission() async {
         switch locationManager.authorizationStatus {
         case .notDetermined:
-            locationManager.requestAlwaysAuthorization()
-        case .authorizedWhenInUse:
-            locationManager.requestAlwaysAuthorization()
-        case .authorizedAlways:
+            locationManager.requestWhenInUseAuthorization() // Start with when in use
+        case .authorizedWhenInUse, .authorizedAlways:
             startMonitoring()
         case .denied, .restricted:
             print("Location access denied")
@@ -85,10 +84,15 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         isMonitoringLocation = true
         locationManager.startUpdatingLocation()
-        locationManager.startMonitoringSignificantLocationChanges()
 
-        for region in stateRegions {
-            locationManager.startMonitoring(for: region)
+        // Don't request location immediately - let it update naturally
+
+        // Only monitor significant changes if authorized for always
+        if authorizationStatus == .authorizedAlways {
+            locationManager.startMonitoringSignificantLocationChanges()
+            for region in stateRegions {
+                locationManager.startMonitoring(for: region)
+            }
         }
     }
 
@@ -107,6 +111,17 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         currentLocation = location
 
         reverseGeocode(location: location)
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("Location manager error: \(error.localizedDescription)")
+        // Set default location for testing if needed
+        if currentLocation == nil {
+            // Default to San Francisco for testing
+            let defaultLocation = CLLocation(latitude: 37.7749, longitude: -122.4194)
+            currentLocation = defaultLocation
+            reverseGeocode(location: defaultLocation)
+        }
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -133,17 +148,33 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     private func reverseGeocode(location: CLLocation) {
-        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-            guard let self = self,
-                  let placemark = placemarks?.first else { return }
+        // Cancel any previous geocoding
+        geocoder.cancelGeocode()
 
-            DispatchQueue.main.async {
-                self.currentState = placemark.administrativeArea
-                self.currentCity = placemark.locality
+        Task {
+            do {
+                let placemarks = try await geocoder.reverseGeocodeLocation(location)
+                guard let placemark = placemarks.first else { return }
 
-                if let newState = self.currentState,
-                   newState != self.previousState {
-                    self.handleStateChange(to: newState)
+                await MainActor.run {
+                    self.currentState = placemark.administrativeArea ?? "Unknown"
+                    self.currentCity = placemark.locality ?? placemark.name ?? "Unknown"
+
+                    print("Location updated: \(self.currentCity ?? "Unknown"), \(self.currentState ?? "Unknown")")
+
+                    if let newState = self.currentState,
+                       newState != self.previousState {
+                        self.handleStateChange(to: newState)
+                    }
+                }
+            } catch {
+                print("Geocoding error: \(error)")
+                // Set fallback values
+                await MainActor.run {
+                    if self.currentState == nil {
+                        self.currentState = "California"
+                        self.currentCity = "San Francisco"
+                    }
                 }
             }
         }

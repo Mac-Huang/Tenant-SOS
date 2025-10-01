@@ -1,16 +1,89 @@
 import SwiftUI
+import Combine
+
+// ScrollToTop coordinator to handle tab reselection
+class ScrollCoordinator: ObservableObject {
+    @Published var scrollToTopTrigger: Int = 0
+
+    func scrollToTop() {
+        scrollToTopTrigger += 1
+    }
+}
 
 struct ContentView: View {
-    @EnvironmentObject var userProfileManager: UserProfileManager
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false // Reset to show onboarding
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @State private var showWelcomeHome = false
+    @State private var justDismissedWelcome = false
     @State private var selectedTab = 0
+    @State private var isReady = false
+    @EnvironmentObject var appState: AppState
+    @EnvironmentObject var dataController: DataController
+    @EnvironmentObject var locationManager: LocationManager
+    @EnvironmentObject var notificationManager: NotificationManager
+    @EnvironmentObject var userProfileManager: UserProfileManager
+    @StateObject private var scrollCoordinator = ScrollCoordinator()
+    @Environment(\.scenePhase) var scenePhase
 
     var body: some View {
-        Group {
-            if !hasCompletedOnboarding {
-                SimpleOnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+        ZStack {
+            if isReady {
+                Group {
+                    if !hasCompletedOnboarding {
+                        OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+                            .environmentObject(locationManager)
+                            .environmentObject(notificationManager)
+                            .environmentObject(userProfileManager)
+                    } else if showWelcomeHome {
+                        WelcomeHomeView(hasSeenWelcome: $showWelcomeHome)
+                            .environmentObject(userProfileManager)
+                            .onChange(of: showWelcomeHome) { oldValue, newValue in
+                                if !newValue {
+                                    justDismissedWelcome = true
+                                }
+                            }
+                    } else {
+                        MainTabView(selectedTab: $selectedTab, scrollCoordinator: scrollCoordinator)
+                            .environmentObject(scrollCoordinator)
+                    }
+                }
+                .transition(.opacity)
             } else {
-                MainTabView(selectedTab: $selectedTab)
+                // Loading screen
+                VStack(spacing: 20) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                    Text("Loading...")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .onAppear {
+
+            // Show welcome home screen if onboarding completed
+            if hasCompletedOnboarding {
+                showWelcomeHome = true
+            }
+
+            // Start loading data
+            dataController.loadDataAsync()
+
+            // Delay to let managers initialize
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation {
+                    isReady = true
+                }
+            }
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            // Show welcome screen when app becomes active from background
+            if oldPhase == .background && newPhase == .active {
+                if hasCompletedOnboarding && !justDismissedWelcome {
+                    showWelcomeHome = true
+                }
+            } else if newPhase == .background {
+                // Reset flag when going to background
+                justDismissedWelcome = false
             }
         }
     }
@@ -18,46 +91,50 @@ struct ContentView: View {
 
 struct MainTabView: View {
     @Binding var selectedTab: Int
-    @EnvironmentObject var locationManager: LocationManager
-    @EnvironmentObject var notificationManager: NotificationManager
+    @ObservedObject var scrollCoordinator: ScrollCoordinator
+    @State private var previousTab: Int = 0
 
     var body: some View {
         TabView(selection: $selectedTab) {
             HomeView()
                 .tabItem {
-                    Label("Home", systemImage: "house.fill")
+                    Image(systemName: "house.fill")
+                    Text("Home")
                 }
                 .tag(0)
 
             SearchView()
                 .tabItem {
-                    Label("Search", systemImage: "magnifyingglass")
+                    Image(systemName: "magnifyingglass")
+                    Text("Search")
                 }
                 .tag(1)
 
             DocumentsView()
                 .tabItem {
-                    Label("Documents", systemImage: "doc.text.fill")
+                    Image(systemName: "doc.text.fill")
+                    Text("Documents")
                 }
                 .tag(2)
 
             ProfileView()
                 .tabItem {
-                    Label("Profile", systemImage: "person.fill")
+                    Image(systemName: "person.fill")
+                    Text("Profile")
                 }
                 .tag(3)
         }
-        .accentColor(.blue)
-        .onAppear {
-            checkLocationUpdate()
+        .onChange(of: selectedTab) { oldValue, newValue in
+            // Detect double-tap on same tab
+            if oldValue == newValue {
+                scrollCoordinator.scrollToTop()
+            }
+            previousTab = newValue
         }
     }
+}
 
-    private func checkLocationUpdate() {
-        if let newState = locationManager.currentState,
-           newState != locationManager.previousState {
-            notificationManager.sendStateChangeNotification(newState: newState)
-            locationManager.previousState = newState
-        }
-    }
+#Preview {
+    ContentView()
+        .environmentObject(AppState())
 }

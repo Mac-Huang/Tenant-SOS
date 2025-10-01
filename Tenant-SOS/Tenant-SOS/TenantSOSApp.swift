@@ -1,78 +1,35 @@
 import SwiftUI
-import FirebaseCore
-import CoreData
-
-class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication,
-                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        FirebaseApp.configure()
-        return true
-    }
-}
+import Combine
 
 @main
 struct TenantSOSApp: App {
-    // Register app delegate for Firebase setup
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
-
+    @StateObject private var appState = AppState()
     @StateObject private var locationManager = LocationManager()
     @StateObject private var dataController = DataController()
     @StateObject private var userProfileManager = UserProfileManager()
-    @StateObject private var notificationManager = NotificationManager()
     @StateObject private var storeManager = StoreManager()
-
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
-    @AppStorage("selectedTheme") private var selectedTheme = "system"
-
-    init() {
-        setupAppearance()
-    }
+    @StateObject private var notificationManager = NotificationManager()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(appState)
                 .environmentObject(locationManager)
                 .environmentObject(dataController)
                 .environmentObject(userProfileManager)
-                .environmentObject(notificationManager)
                 .environmentObject(storeManager)
-                // .environment(\.managedObjectContext, dataController.container.viewContext) // Disabled Core Data
-                .preferredColorScheme(colorScheme)
-                .onAppear {
-                    requestPermissions()
-                }
+                .environmentObject(notificationManager)
         }
     }
+}
 
-    private var colorScheme: ColorScheme? {
-        switch selectedTheme {
-        case "light":
-            return .light
-        case "dark":
-            return .dark
-        default:
-            return nil
-        }
-    }
-
-    private func setupAppearance() {
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor.systemBackground
-        appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
-        appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
-
-        UINavigationBar.appearance().standardAppearance = appearance
-        UINavigationBar.appearance().scrollEdgeAppearance = appearance
-        UINavigationBar.appearance().compactAppearance = appearance
-
-        UITabBar.appearance().backgroundColor = UIColor.systemBackground
-    }
-
-    private func requestPermissions() {
-        Task {
-            await locationManager.requestPermission()
-            await notificationManager.requestPermission()
-        }
-    }
+// Simple app state management
+class AppState: ObservableObject {
+    @Published var currentState: String = "California"
+    @Published var currentCity: String = "San Francisco"
+    @Published var homeState: String = "CA"
+    @Published var housingStatus: String = "renter"
+    @Published var hasDriversLicense: Bool = true
+    @Published var employmentType: String = "full-time"
+    @Published var notificationPreference: String = "daily"
 }

@@ -6,6 +6,7 @@ struct ProfileView: View {
     @EnvironmentObject var storeManager: StoreManager
     @State private var showingSettings = false
     @State private var showingSubscription = false
+    @State private var showingEditProfile = false
 
     var body: some View {
         NavigationView {
@@ -24,6 +25,15 @@ struct ProfileView: View {
             }
             .navigationTitle("Profile")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        showingEditProfile = true
+                    }) {
+                        Text("Edit")
+                            .foregroundColor(.blue)
+                    }
+                }
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         showingSettings = true
@@ -38,19 +48,33 @@ struct ProfileView: View {
             .sheet(isPresented: $showingSubscription) {
                 ProUpgradeView()
             }
+            .sheet(isPresented: $showingEditProfile) {
+                EditableProfileView()
+            }
         }
     }
 }
 
 struct ProfileHeaderSection: View {
     @EnvironmentObject var userProfileManager: UserProfileManager
+    @State private var profileImage: UIImage?
 
     var body: some View {
         Section {
             HStack(spacing: 16) {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.blue)
+                if let profileImage = profileImage {
+                    Image(uiImage: profileImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 60, height: 60)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.gray.opacity(0.2), lineWidth: 1))
+                } else {
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.blue)
+                }
+
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Welcome Back!")
@@ -71,6 +95,19 @@ struct ProfileHeaderSection: View {
                 Spacer()
             }
             .padding(.vertical, 8)
+        }
+        .onAppear {
+            loadProfileImage()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            loadProfileImage()
+        }
+    }
+
+    private func loadProfileImage() {
+        if let imageData = UserDefaults.standard.data(forKey: "profileImage"),
+           let image = UIImage(data: imageData) {
+            profileImage = image
         }
     }
 }
@@ -150,7 +187,9 @@ struct SubscriptionSection: View {
                 }
 
                 Button(action: {
-                    // Manage subscription
+                    if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                        UIApplication.shared.open(url)
+                    }
                 }) {
                     Text("Manage Subscription")
                         .foregroundColor(.blue)
@@ -203,8 +242,12 @@ struct SupportSection: View {
             Button(action: {
                 requestAppReview()
             }) {
-                Label("Rate App", systemImage: "star.fill")
-                    .foregroundColor(.primary)
+                HStack {
+                    Label("Rate App", systemImage: "star.fill")
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+                .foregroundColor(.primary)
             }
         }
     }

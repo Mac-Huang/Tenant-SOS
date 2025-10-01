@@ -181,8 +181,10 @@ struct GeneratedDocumentsSection: View {
             Text("Recent Documents")
                 .font(.headline)
 
-            ForEach(documents.reversed()) { document in
-                GeneratedDocumentRow(document: document)
+            LazyVStack(alignment: .leading, spacing: 8) {
+                ForEach(documents.reversed()) { document in
+                    GeneratedDocumentRow(document: document)
+                }
             }
         }
     }

@@ -22,22 +22,6 @@ struct OnboardingView: View {
         .tabViewStyle(PageTabViewStyle())
         .indexViewStyle(PageIndexViewStyle(backgroundDisplayMode: .always))
         .animation(.easeInOut, value: currentPage)
-
-            // Skip button for testing
-            VStack {
-                HStack {
-                    Spacer()
-                    Button("Skip All") {
-                        hasCompletedOnboarding = true
-                    }
-                    .padding()
-                    .foregroundColor(.white)
-                    .background(Color.red.opacity(0.8))
-                    .cornerRadius(8)
-                }
-                Spacer()
-            }
-            .padding()
         }
     }
 }
@@ -50,40 +34,28 @@ struct WelcomeView: View {
             Spacer()
 
             Image(systemName: "shield.checkered")
-                .font(.system(size: 80))
+                .font(.system(size: 100))
                 .foregroundColor(.blue)
-                .padding()
 
             VStack(spacing: 16) {
                 Text("Welcome to Tenant SOS")
                     .font(.largeTitle)
                     .fontWeight(.bold)
+                    .multilineTextAlignment(.center)
 
                 Text("Your Personal Legal Assistant")
-                    .font(.title3)
+                    .font(.body)
+                    .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)
+                    .padding(.horizontal)
             }
 
-            VStack(alignment: .leading, spacing: 20) {
-                FeatureRow(
-                    icon: "location.fill",
-                    title: "Location-Based Laws",
-                    description: "Get relevant laws based on your current location"
-                )
-
-                FeatureRow(
-                    icon: "doc.text.fill",
-                    title: "Document Generator",
-                    description: "Create legal documents with ease"
-                )
-
-                FeatureRow(
-                    icon: "bell.fill",
-                    title: "Smart Notifications",
-                    description: "Stay updated with law changes"
-                )
+            VStack(alignment: .leading, spacing: 16) {
+                InfoPoint(text: "Get location-based laws and regulations")
+                InfoPoint(text: "Generate legal documents easily")
+                InfoPoint(text: "Stay updated with law changes")
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 40)
 
             Spacer()
 
@@ -96,38 +68,20 @@ struct WelcomeView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.blue)
-                    .cornerRadius(10)
+                    .cornerRadius(12)
             }
             .padding(.horizontal)
+
+            Button(action: {
+                currentPage = 1
+            }) {
+                Text("Skip for now")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+            }
             .padding(.bottom)
         }
         .padding()
-    }
-}
-
-struct FeatureRow: View {
-    let icon: String
-    let title: String
-    let description: String
-
-    var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.blue)
-                .frame(width: 40)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Spacer()
-        }
     }
 }
 
@@ -181,7 +135,9 @@ struct LocationPermissionView: View {
             }
             .padding(.horizontal)
 
-            Button(action: {}) {
+            Button(action: {
+                currentPage = 2
+            }) {
                 Text("Skip for now")
                     .font(.footnote)
                     .foregroundColor(.secondary)
@@ -241,7 +197,9 @@ struct NotificationPermissionView: View {
             }
             .padding(.horizontal)
 
-            Button(action: {}) {
+            Button(action: {
+                currentPage = 3
+            }) {
                 Text("Skip for now")
                     .font(.footnote)
                     .foregroundColor(.secondary)
@@ -392,7 +350,10 @@ struct ProfileSetupView: View {
 
                 Button(action: {
                     saveProfile()
-                    hasCompletedOnboarding = true
+                    // Ensure this is properly set and persisted
+                    DispatchQueue.main.async {
+                        hasCompletedOnboarding = true
+                    }
                 }) {
                     Text("Complete Setup")
                         .font(.headline)

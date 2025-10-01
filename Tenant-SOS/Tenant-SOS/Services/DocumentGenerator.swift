@@ -74,8 +74,8 @@ class DocumentGenerator: ObservableObject {
                 .font: UIFont.systemFont(ofSize: 24, weight: .bold)
             ]
 
-            let titleAttributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 18, weight: .semibold)
+            _ = [
+                NSAttributedString.Key.font: UIFont.systemFont(ofSize: 18, weight: .semibold)
             ]
 
             let bodyAttributes: [NSAttributedString.Key: Any] = [
