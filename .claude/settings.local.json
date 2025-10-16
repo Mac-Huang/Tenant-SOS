@@ -48,7 +48,10 @@
       "Bash(fi)",
       "Bash(done)",
       "Bash(then echo \"Resizing $img...\")",
-      "Bash(then basename \"$img\")"
+      "Bash(then basename \"$img\")",
+      "Bash(git log:*)",
+      "Bash(swift-frontend:*)",
+      "Bash(./run-app.sh:*)"
     ],
     "deny": [],
     "ask": []

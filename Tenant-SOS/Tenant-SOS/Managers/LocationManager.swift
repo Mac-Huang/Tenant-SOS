@@ -1,6 +1,7 @@
 import CoreLocation
 import Combine
 import SwiftUI
+import UserNotifications
 
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
@@ -24,13 +25,10 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         let radius: CLLocationDistance
     }
 
-    private let majorStates: [StateCoordinate] = [
-        StateCoordinate(state: "California", code: "CA", latitude: 36.7783, longitude: -119.4179, radius: 400000),
-        StateCoordinate(state: "Texas", code: "TX", latitude: 31.0000, longitude: -100.0000, radius: 500000),
-        StateCoordinate(state: "New York", code: "NY", latitude: 43.0000, longitude: -75.0000, radius: 300000),
-        StateCoordinate(state: "Florida", code: "FL", latitude: 27.6648, longitude: -81.5158, radius: 350000),
-        StateCoordinate(state: "Illinois", code: "IL", latitude: 40.6331, longitude: -89.3985, radius: 300000)
-    ]
+    // Use all 50 states from StateDatabase
+    private var allStates: [StateInfo] {
+        return StateDatabase.allStates
+    }
 
     override init() {
         super.init()
@@ -43,15 +41,19 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.distanceFilter = 100 // More frequent updates
         locationManager.pausesLocationUpdatesAutomatically = true
-        locationManager.allowsBackgroundLocationUpdates = false // Don't need background for now
-        locationManager.showsBackgroundLocationIndicator = false
+        locationManager.allowsBackgroundLocationUpdates = true // Enable background location
+        locationManager.showsBackgroundLocationIndicator = true // Show indicator when tracking in background
 
         authorizationStatus = locationManager.authorizationStatus
         // Don't start monitoring here - wait for explicit request
     }
 
     private func setupGeofencing() {
-        for state in majorStates {
+        // Monitor up to 20 nearest states (iOS limit for region monitoring)
+        // In production, dynamically update based on user location
+        let statesToMonitor = Array(allStates.prefix(20))
+
+        for state in statesToMonitor {
             let region = CLCircularRegion(
                 center: CLLocationCoordinate2D(latitude: state.latitude, longitude: state.longitude),
                 radius: state.radius,
@@ -68,7 +70,11 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         switch locationManager.authorizationStatus {
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization() // Start with when in use
-        case .authorizedWhenInUse, .authorizedAlways:
+        case .authorizedWhenInUse:
+            // If we have "when in use", request "always" for background tracking
+            locationManager.requestAlwaysAuthorization()
+            startMonitoring()
+        case .authorizedAlways:
             startMonitoring()
         case .denied, .restricted:
             print("Location access denied")
@@ -138,7 +144,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         guard let circularRegion = region as? CLCircularRegion else { return }
 
-        if let state = majorStates.first(where: { $0.code == circularRegion.identifier }) {
+        if let state = allStates.first(where: { $0.code == circularRegion.identifier }) {
             handleStateChange(to: state.code)
         }
     }
@@ -189,12 +195,70 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             object: nil,
             userInfo: ["newState": newState, "previousState": previousState ?? ""]
         )
+
+        // Send local notification when entering a new state
+        sendStateChangeNotification(newState: newState)
+    }
+
+    private func sendStateChangeNotification(newState: String) {
+        let content = UNMutableNotificationContent()
+
+        // Get state name from code
+        let stateName = StateDatabase.getState(byCode: newState)?.name ?? newState
+
+        content.title = "Welcome to \(stateName)!"
+
+        // Get key differences if we have a previous state
+        if let previousState = previousState {
+            let criticalDifferences = StateLawsDatabase.getCriticalDifferences(from: previousState, to: newState, limit: 3)
+
+            if !criticalDifferences.isEmpty {
+                // Build notification body with key differences
+                var bodyText = "⚠️ Key law differences:\n"
+                for diff in criticalDifferences.prefix(2) {
+                    bodyText += "\(diff.notificationText)\n"
+                }
+                bodyText += "\nTap for complete details"
+                content.body = bodyText
+            } else {
+                content.body = "Laws are similar to \(previousState). Tap to review local regulations."
+            }
+        } else {
+            content.body = "Tap to see important laws and regulations for \(stateName)."
+        }
+
+        content.sound = .default
+        content.categoryIdentifier = "STATE_CHANGE"
+        content.userInfo = [
+            "state": newState,
+            "previousState": previousState ?? "",
+            "timestamp": Date().timeIntervalSince1970
+        ]
+
+        // Create trigger for immediate delivery
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+
+        // Create request
+        let request = UNNotificationRequest(
+            identifier: "state-change-\(newState)-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: trigger
+        )
+
+        // Schedule notification
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Error scheduling notification: \(error)")
+            } else {
+                print("State change notification scheduled for \(newState)")
+            }
+        }
     }
 
     func checkIfInState(_ stateCode: String) -> Bool {
         guard let currentLocation = currentLocation else { return false }
 
-        if let state = majorStates.first(where: { $0.code == stateCode }) {
+        if let state = allStates.first(where: { $0.code == stateCode }) {
             let stateLocation = CLLocation(latitude: state.latitude, longitude: state.longitude)
             return currentLocation.distance(from: stateLocation) <= state.radius
         }
@@ -205,7 +269,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     func getDistanceToState(_ stateCode: String) -> CLLocationDistance? {
         guard let currentLocation = currentLocation else { return nil }
 
-        if let state = majorStates.first(where: { $0.code == stateCode }) {
+        if let state = allStates.first(where: { $0.code == stateCode }) {
             let stateLocation = CLLocation(latitude: state.latitude, longitude: state.longitude)
             return currentLocation.distance(from: stateLocation)
         }

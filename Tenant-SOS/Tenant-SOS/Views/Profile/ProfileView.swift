@@ -3,9 +3,7 @@ import StoreKit
 
 struct ProfileView: View {
     @EnvironmentObject var userProfileManager: UserProfileManager
-    @EnvironmentObject var storeManager: StoreManager
     @State private var showingSettings = false
-    @State private var showingSubscription = false
     @State private var showingEditProfile = false
 
     var body: some View {
@@ -16,8 +14,6 @@ struct ProfileView: View {
                 ProfileDetailsSection()
 
                 PreferencesSection()
-
-                SubscriptionSection()
 
                 SupportSection()
 
@@ -44,9 +40,6 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showingSettings) {
                 SettingsView()
-            }
-            .sheet(isPresented: $showingSubscription) {
-                ProUpgradeView()
             }
             .sheet(isPresented: $showingEditProfile) {
                 EditableProfileView()
@@ -168,55 +161,6 @@ struct PreferencesSection: View {
     }
 }
 
-struct SubscriptionSection: View {
-    @EnvironmentObject var storeManager: StoreManager
-
-    var body: some View {
-        Section("Subscription") {
-            if storeManager.isPro() {
-                HStack {
-                    Label("Pro Member", systemImage: "crown.fill")
-                        .foregroundColor(.yellow)
-                    Spacer()
-                    Text("Active")
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.green.opacity(0.2))
-                        .cornerRadius(4)
-                }
-
-                Button(action: {
-                    if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
-                        UIApplication.shared.open(url)
-                    }
-                }) {
-                    Text("Manage Subscription")
-                        .foregroundColor(.blue)
-                }
-            } else {
-                NavigationLink(destination: ProUpgradeView()) {
-                    HStack {
-                        Label("Upgrade to Pro", systemImage: "star.fill")
-                            .foregroundColor(.yellow)
-                        Spacer()
-                        Text("$4.99/mo")
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                Button(action: {
-                    Task {
-                        await storeManager.restorePurchases()
-                    }
-                }) {
-                    Text("Restore Purchases")
-                        .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
 
 struct SupportSection: View {
     var body: some View {

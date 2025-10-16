@@ -7,8 +7,8 @@ struct TenantSOSApp: App {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var dataController = DataController()
     @StateObject private var userProfileManager = UserProfileManager()
-    @StateObject private var storeManager = StoreManager()
     @StateObject private var notificationManager = NotificationManager()
+    @AppStorage("selectedTheme") private var selectedTheme = "system"
 
     var body: some Scene {
         WindowGroup {
@@ -17,8 +17,19 @@ struct TenantSOSApp: App {
                 .environmentObject(locationManager)
                 .environmentObject(dataController)
                 .environmentObject(userProfileManager)
-                .environmentObject(storeManager)
                 .environmentObject(notificationManager)
+                .preferredColorScheme(getColorScheme())
+        }
+    }
+
+    private func getColorScheme() -> ColorScheme? {
+        switch selectedTheme {
+        case "light":
+            return .light
+        case "dark":
+            return .dark
+        default:
+            return nil // System default
         }
     }
 }

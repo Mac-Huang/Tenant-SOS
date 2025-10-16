@@ -3,13 +3,11 @@ import PDFKit
 
 struct DocumentsView: View {
     @StateObject private var documentGenerator = DocumentGenerator()
-    @EnvironmentObject var storeManager: StoreManager
     @EnvironmentObject var dataController: DataController
 
     @State private var selectedTemplate: DocumentGenerator.DocumentTemplate?
     @State private var showingDocumentForm = false
     @State private var documentsGenerated = 0
-    @State private var showingProUpgrade = false
 
     @AppStorage("documentsGeneratedThisMonth") private var documentsGeneratedThisMonth = 0
     @AppStorage("lastResetDate") private var lastResetDate = Date().timeIntervalSince1970
@@ -18,11 +16,7 @@ struct DocumentsView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    DocumentQuotaCard(
-                        documentsUsed: documentsGeneratedThisMonth,
-                        monthlyLimit: storeManager.monthlyDocumentLimit(),
-                        isPro: storeManager.isPro()
-                    )
+                    // Removed quota card - all documents are now free
 
                     TemplatesSection(
                         selectedTemplate: $selectedTemplate,
@@ -36,16 +30,6 @@ struct DocumentsView: View {
                 .padding()
             }
             .navigationTitle("Documents")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showingProUpgrade = true
-                    }) {
-                        Image(systemName: "crown.fill")
-                            .foregroundColor(.yellow)
-                    }
-                }
-            }
             .sheet(isPresented: $showingDocumentForm) {
                 if let template = selectedTemplate {
                     DocumentFormView(
@@ -54,9 +38,6 @@ struct DocumentsView: View {
                         documentsGeneratedThisMonth: $documentsGeneratedThisMonth
                     )
                 }
-            }
-            .sheet(isPresented: $showingProUpgrade) {
-                ProUpgradeView()
             }
         }
         .onAppear {
@@ -75,52 +56,6 @@ struct DocumentsView: View {
     }
 }
 
-struct DocumentQuotaCard: View {
-    let documentsUsed: Int
-    let monthlyLimit: Int
-    let isPro: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "doc.badge.plus")
-                    .foregroundColor(.blue)
-                Text("Document Generation")
-                    .font(.headline)
-                Spacer()
-                if isPro {
-                    Label("Pro", systemImage: "crown.fill")
-                        .font(.caption)
-                        .foregroundColor(.yellow)
-                }
-            }
-
-            if !isPro {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("\(documentsUsed) of \(monthlyLimit) documents used this month")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-
-                    ProgressView(value: Double(documentsUsed), total: Double(monthlyLimit))
-                        .tint(documentsUsed >= monthlyLimit ? .red : .blue)
-
-                    if documentsUsed >= monthlyLimit {
-                        Text("Monthly limit reached. Upgrade to Pro for unlimited documents.")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                    }
-                }
-            } else {
-                Text("Unlimited document generation")
-                    .font(.subheadline)
-                    .foregroundColor(.green)
-            }
-        }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-    }
-}
 
 struct TemplatesSection: View {
     @Binding var selectedTemplate: DocumentGenerator.DocumentTemplate?
@@ -240,7 +175,6 @@ struct DocumentFormView: View {
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var locationManager: LocationManager
-    @EnvironmentObject var storeManager: StoreManager
 
     @State private var formData: [String: String] = [:]
     @State private var showingGeneratedDocument = false
@@ -312,10 +246,7 @@ struct DocumentFormView: View {
     }
 
     private func canGenerate() -> Bool {
-        if !storeManager.isPro() && documentsGeneratedThisMonth >= storeManager.monthlyDocumentLimit() {
-            return false
-        }
-
+        // No limits - all documents are free!
         return !formData.values.contains(where: { $0.isEmpty })
     }
 
