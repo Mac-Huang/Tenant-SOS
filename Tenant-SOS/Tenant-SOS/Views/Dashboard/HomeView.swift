@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 struct HomeView: View {
     @EnvironmentObject var locationManager: LocationManager
@@ -61,8 +62,12 @@ struct HomeView: View {
     }
 
     private func refreshDataAsync() async {
+        // Refresh location
+        await MainActor.run {
+            locationManager.refreshLocation()
+        }
         // Simulate refresh - pull to refresh
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        try? await Task.sleep(nanoseconds: 500_000_000)
         // In production, reload data from server
         dataController.loadData()
     }
@@ -323,6 +328,7 @@ struct CategoryLawsView: View {
     let category: String
     @EnvironmentObject var dataController: DataController
     @EnvironmentObject var locationManager: LocationManager
+    @State private var isRefreshing = false
 
     var body: some View {
         ScrollView {
@@ -350,9 +356,66 @@ struct CategoryLawsView: View {
                         }
                     }
                 } else {
-                    Text("Location not available")
-                        .foregroundColor(.secondary)
-                        .padding()
+                    VStack(spacing: 20) {
+                        Image(systemName: "location.slash")
+                            .font(.system(size: 50))
+                            .foregroundColor(.orange)
+
+                        Text("Location Not Detected")
+                            .font(.headline)
+
+                        Text("Enable location services to see laws for your current state")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+
+                        Button(action: {
+                            // Trigger location refresh
+                            isRefreshing = true
+                            print("🔘 User tapped Refresh Location button")
+                            locationManager.refreshLocation()
+
+                            // Reset after delay
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                isRefreshing = false
+                            }
+                        }) {
+                            HStack {
+                                if isRefreshing {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.8)
+                                    Text("Refreshing...")
+                                } else {
+                                    Label("Refresh Location", systemImage: "location.fill")
+                                }
+                            }
+                            .frame(minWidth: 180)
+                            .padding()
+                            .background(isRefreshing ? Color.gray : Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                        .disabled(isRefreshing)
+
+                        // Show authorization status hint
+                        if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
+                            VStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .foregroundColor(.orange)
+                                Text("Location permission denied")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("Open Settings > Privacy > Location Services > Tenant SOS")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding()
+                        }
+                    }
+                    .padding(.top, 50)
                 }
             }
             .padding()

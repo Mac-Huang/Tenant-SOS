@@ -236,7 +236,19 @@ struct ProfileSetupView: View {
     @State private var hasDriversLicense = true
     @State private var employmentType = "Full-time"
 
-    let states = ["California", "Texas", "New York", "Florida", "Illinois"]
+    // All 50 US states - alphabetically sorted
+    let states = [
+        "Alabama", "Alaska", "Arizona", "Arkansas", "California",
+        "Colorado", "Connecticut", "Delaware", "Florida", "Georgia",
+        "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
+        "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland",
+        "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri",
+        "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey",
+        "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
+        "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+        "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
+        "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
+    ]
     let housingOptions = ["Renter", "Owner", "Temporary"]
     let employmentOptions = ["Full-time", "Part-time", "Self-employed", "Unemployed", "Student"]
 

@@ -81,9 +81,14 @@ struct ContentView: View {
                 if hasCompletedOnboarding && !justDismissedWelcome {
                     showWelcomeHome = true
                 }
+                // Refresh location when coming back to foreground
+                locationManager.refreshLocation()
             } else if newPhase == .background {
                 // Reset flag when going to background
                 justDismissedWelcome = false
+            } else if newPhase == .active {
+                // Also refresh when app first becomes active
+                locationManager.refreshLocation()
             }
         }
     }

@@ -251,6 +251,12 @@ struct DetailRow: View {
 
 func requestAppReview() {
     if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+        if #available(iOS 18.0, *) {
+            // Suppress deprecation warning - will update to new API when minimum iOS version is 18
+            #if compiler(>=6.0)
+            #warning("Update to use AppStore.requestReview(in:) when minimum iOS version is 18.0")
+            #endif
+        }
         SKStoreReviewController.requestReview(in: windowScene)
     }
 }

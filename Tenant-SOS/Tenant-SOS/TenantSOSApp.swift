@@ -36,9 +36,9 @@ struct TenantSOSApp: App {
 
 // Simple app state management
 class AppState: ObservableObject {
-    @Published var currentState: String = "California"
-    @Published var currentCity: String = "San Francisco"
-    @Published var homeState: String = "CA"
+    @Published var currentState: String = ""
+    @Published var currentCity: String = ""
+    @Published var homeState: String = ""
     @Published var housingStatus: String = "renter"
     @Published var hasDriversLicense: Bool = true
     @Published var employmentType: String = "full-time"

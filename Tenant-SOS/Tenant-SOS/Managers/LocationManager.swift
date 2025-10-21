@@ -16,6 +16,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let geocoder = CLGeocoder()
     private var stateRegions: [CLCircularRegion] = []
     private var cancellables = Set<AnyCancellable>()
+    private var currentGeocodingTask: Task<Void, Never>?
 
     struct StateCoordinate {
         let state: String
@@ -34,18 +35,33 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         super.init()
         setupLocationManager()
         setupGeofencing()
+
+        print("🚀 LocationManager init - Authorization status: \(authorizationStatus.rawValue)")
+
+        // Automatically start monitoring if we have permission
+        if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
+            print("✅ Have permission, starting monitoring")
+            startMonitoring()
+            // Also request immediate location update
+            locationManager.requestLocation()
+        } else if authorizationStatus == .notDetermined {
+            print("🔐 Requesting location permission")
+            // Request permission if not determined
+            locationManager.requestWhenInUseAuthorization()
+        } else {
+            print("❌ Location permission denied or restricted")
+        }
     }
 
     private func setupLocationManager() {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.distanceFilter = 100 // More frequent updates
-        locationManager.pausesLocationUpdatesAutomatically = true
+        locationManager.distanceFilter = 50 // More frequent updates
+        locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.allowsBackgroundLocationUpdates = true // Enable background location
         locationManager.showsBackgroundLocationIndicator = true // Show indicator when tracking in background
 
         authorizationStatus = locationManager.authorizationStatus
-        // Don't start monitoring here - wait for explicit request
     }
 
     private func setupGeofencing() {
@@ -84,17 +100,22 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     func startMonitoring() {
+        print("🎯 startMonitoring called - Authorization: \(authorizationStatus.rawValue)")
+
         guard authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse else {
+            print("⛔ Cannot start monitoring - no permission")
             return
         }
 
         isMonitoringLocation = true
-        locationManager.startUpdatingLocation()
+        print("📍 Starting location updates...")
 
-        // Don't request location immediately - let it update naturally
+        // Use continuous location updates for better accuracy
+        locationManager.startUpdatingLocation()
 
         // Only monitor significant changes if authorized for always
         if authorizationStatus == .authorizedAlways {
+            print("📍 Starting significant location changes monitoring")
             locationManager.startMonitoringSignificantLocationChanges()
             for region in stateRegions {
                 locationManager.startMonitoring(for: region)
@@ -112,31 +133,60 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
 
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
-        currentLocation = location
+    func refreshLocation() {
+        print("🔄 Manually refreshing location...")
+        print("   Current authorization status: \(authorizationStatus.rawValue)")
 
+        switch authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            print("   ✓ Have permission, requesting location...")
+            locationManager.requestLocation()
+            // Also restart monitoring to ensure we're listening
+            startMonitoring()
+
+        case .notDetermined:
+            print("   → Permission not determined, requesting...")
+            locationManager.requestWhenInUseAuthorization()
+
+        case .denied, .restricted:
+            print("   ⚠️ Permission denied or restricted")
+            print("   → User needs to enable location in Settings")
+
+        @unknown default:
+            print("   ⚠️ Unknown authorization status")
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else {
+            print("⚠️ No locations in update")
+            return
+        }
+
+        print("📍 Got location update: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        print("   Accuracy: \(location.horizontalAccuracy)m, Timestamp: \(location.timestamp)")
+
+        currentLocation = location
         reverseGeocode(location: location)
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Location manager error: \(error.localizedDescription)")
-        // Set default location for testing if needed
-        if currentLocation == nil {
-            // Default to San Francisco for testing
-            let defaultLocation = CLLocation(latitude: 37.7749, longitude: -122.4194)
-            currentLocation = defaultLocation
-            reverseGeocode(location: defaultLocation)
-        }
+        // Don't set a default location - wait for actual location
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
+        print("🔐 Authorization changed to: \(authorizationStatus.rawValue)")
 
         switch authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
+            print("✅ Got permission, starting monitoring")
             startMonitoring()
+            // Request immediate location update
+            locationManager.requestLocation()
         default:
+            print("⛔ No permission, stopping monitoring")
             stopMonitoring()
         }
     }
@@ -154,19 +204,41 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     private func reverseGeocode(location: CLLocation) {
-        // Cancel any previous geocoding
-        geocoder.cancelGeocode()
+        // Cancel any previous geocoding task
+        currentGeocodingTask?.cancel()
 
-        Task {
+        print("📍 Reverse geocoding location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        print("   Timestamp: \(location.timestamp)")
+        print("   Accuracy: \(location.horizontalAccuracy)m")
+
+        currentGeocodingTask = Task {
             do {
+                print("🔄 Starting geocoding request...")
                 let placemarks = try await geocoder.reverseGeocodeLocation(location)
-                guard let placemark = placemarks.first else { return }
+                print("✅ Geocoding response received, placemarks count: \(placemarks.count)")
+
+                guard let placemark = placemarks.first else {
+                    print("⚠️ No placemarks found")
+                    return
+                }
+
+                print("📦 Placemark details:")
+                print("   - administrativeArea: \(placemark.administrativeArea ?? "nil")")
+                print("   - locality: \(placemark.locality ?? "nil")")
+                print("   - name: \(placemark.name ?? "nil")")
+                print("   - country: \(placemark.country ?? "nil")")
 
                 await MainActor.run {
-                    self.currentState = placemark.administrativeArea ?? "Unknown"
-                    self.currentCity = placemark.locality ?? placemark.name ?? "Unknown"
+                    // Get state abbreviation or full name
+                    let state = placemark.administrativeArea ?? placemark.country ?? "Unknown"
+                    let city = placemark.locality ?? placemark.name ?? "Unknown"
 
-                    print("Location updated: \(self.currentCity ?? "Unknown"), \(self.currentState ?? "Unknown")")
+                    self.currentState = state
+                    self.currentCity = city
+
+                    print("✅ Location updated: \(city), \(state)")
+                    print("   → currentState is now: \(self.currentState ?? "nil")")
+                    print("   → currentCity is now: \(self.currentCity ?? "nil")")
 
                     if let newState = self.currentState,
                        newState != self.previousState {
@@ -174,13 +246,13 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                     }
                 }
             } catch {
-                print("Geocoding error: \(error)")
-                // Set fallback values
+                print("❌ Geocoding error: \(error)")
+                print("   Location was: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+                // Don't set fallback values - just wait for next location update
                 await MainActor.run {
-                    if self.currentState == nil {
-                        self.currentState = "California"
-                        self.currentCity = "San Francisco"
-                    }
+                    // Show detecting state instead of fake location
+                    self.currentState = nil
+                    self.currentCity = nil
                 }
             }
         }

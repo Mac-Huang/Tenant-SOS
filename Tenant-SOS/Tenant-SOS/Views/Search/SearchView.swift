@@ -42,17 +42,17 @@ struct SearchView: View {
         .onAppear {
             loadRecentSearches()
         }
-        .onChange(of: searchText) { newValue in
+        .onChange(of: searchText) { _, newValue in
             // Cancel previous work item
             searchWorkItem?.cancel()
-            
+
             // Create new work item with delay
             let workItem = DispatchWorkItem {
                 performSearch(newValue)
             }
-            
+
             searchWorkItem = workItem
-            
+
             // Execute after delay to debounce
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
         }
@@ -348,13 +348,13 @@ struct SearchResultsView: View {
         .onAppear {
             performFilteringAsync()
         }
-        .onChange(of: searchText) { _ in
+        .onChange(of: searchText) { _, _ in
             performFilteringAsync()
         }
-        .onChange(of: category) { _ in
+        .onChange(of: category) { _, _ in
             performFilteringAsync()
         }
-        .onChange(of: state) { _ in
+        .onChange(of: state) { _, _ in
             performFilteringAsync()
         }
     }
@@ -372,24 +372,24 @@ struct SearchResultsView: View {
     }
     
     private func filterLawsAsync() async -> [LawModel] {
-        return await Task.detached(priority: .userInitiated) {
-            var laws: [LawModel] = []
+        // Capture data controller values before detached task
+        let currentState = state
+        let currentCategory = category
+        let currentSearchText = searchText
+        let allLaws = dataController.laws
+        let stateLaws = currentState == "All States" ? allLaws : dataController.fetchLaws(for: currentState)
 
-            // Get laws based on state filter
-            if state == "All States" {
-                laws = dataController.laws
-            } else {
-                laws = dataController.fetchLaws(for: state)
-            }
+        return await Task.detached(priority: .userInitiated) {
+            var laws: [LawModel] = stateLaws
 
             // Filter by category
-            if category != "All" {
-                laws = laws.filter { $0.category == category }
+            if currentCategory != "All" {
+                laws = laws.filter { $0.category == currentCategory }
             }
 
             // Filter by search text
-            if !searchText.isEmpty {
-                let lowercasedSearch = searchText.lowercased()
+            if !currentSearchText.isEmpty {
+                let lowercasedSearch = currentSearchText.lowercased()
                 laws = laws.filter { law in
                     law.title.lowercased().contains(lowercasedSearch) ||
                     law.summary.lowercased().contains(lowercasedSearch) ||
