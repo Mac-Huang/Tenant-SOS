@@ -90,36 +90,34 @@ class DataController: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
 
-            // Try to load existing data
-            var loadedStates: [StateModel] = []
-            if let data = UserDefaults.standard.data(forKey: "states"),
-               let decoded = try? JSONDecoder().decode([StateModel].self, from: data) {
-                loadedStates = decoded
-            }
+            var loadedStates = self.loadStatesFromDefaults()
+            var loadedLaws = self.loadLawsFromDefaults()
 
-            var loadedLaws: [LawModel] = []
-            if let data = UserDefaults.standard.data(forKey: "laws"),
-               let decoded = try? JSONDecoder().decode([LawModel].self, from: data) {
-                loadedLaws = decoded
-            }
-
-            // If no data exists, generate it
-            if loadedStates.isEmpty {
+            if loadedStates.isEmpty || loadedLaws.isEmpty {
                 self.generateInitialData()
-
-                // Reload after generating
-                if let data = UserDefaults.standard.data(forKey: "states"),
-                   let decoded = try? JSONDecoder().decode([StateModel].self, from: data) {
-                    loadedStates = decoded
-                }
-                if let data = UserDefaults.standard.data(forKey: "laws"),
-                   let decoded = try? JSONDecoder().decode([LawModel].self, from: data) {
-                    loadedLaws = decoded
-                }
+                loadedStates = self.loadStatesFromDefaults()
+                loadedLaws = self.loadLawsFromDefaults()
             }
 
-            // Update on main thread
+            let didUpdate = self.ensureAllStatesLoaded(states: &loadedStates, laws: &loadedLaws)
+
+            if didUpdate {
+                self.persistStateData(states: loadedStates, laws: loadedLaws)
+            }
+
+            loadedStates.sort { $0.name < $1.name }
+            loadedLaws.sort {
+                if $0.stateCode == $1.stateCode {
+                    if $0.category == $1.category {
+                        return $0.title < $1.title
+                    }
+                    return $0.category < $1.category
+                }
+                return $0.stateCode < $1.stateCode
+            }
+
             DispatchQueue.main.async {
+                self.clearCaches()
                 self.states = loadedStates
                 self.laws = loadedLaws
             }
@@ -128,32 +126,71 @@ class DataController: ObservableObject {
 
     private func generateInitialData() {
         // Generate data on background thread, then save
-        let newStates = [
-            StateModel(name: "California", abbreviation: "CA", lastUpdated: Date()),
-            StateModel(name: "Texas", abbreviation: "TX", lastUpdated: Date()),
-            StateModel(name: "New York", abbreviation: "NY", lastUpdated: Date()),
-            StateModel(name: "Florida", abbreviation: "FL", lastUpdated: Date()),
-            StateModel(name: "Illinois", abbreviation: "IL", lastUpdated: Date()),
-            StateModel(name: "Washington", abbreviation: "WA", lastUpdated: Date()),
-            StateModel(name: "Georgia", abbreviation: "GA", lastUpdated: Date()),
-            StateModel(name: "Pennsylvania", abbreviation: "PA", lastUpdated: Date()),
-            StateModel(name: "Arizona", abbreviation: "AZ", lastUpdated: Date()),
-            StateModel(name: "Massachusetts", abbreviation: "MA", lastUpdated: Date())
-        ]
-
-        // Save to UserDefaults directly
-        if let encoded = try? JSONEncoder().encode(newStates) {
-            UserDefaults.standard.set(encoded, forKey: "states")
-        }
-
-        // Generate laws on background thread
+        var newStates: [StateModel] = []
         var allLaws: [LawModel] = []
-        for state in newStates {
-            allLaws.append(contentsOf: generateLawsForState(state))
+        let timestamp = Date()
+
+        for stateInfo in StateDatabase.allStates {
+            let stateModel = StateModel(name: stateInfo.name, abbreviation: stateInfo.code, lastUpdated: timestamp)
+            newStates.append(stateModel)
+            allLaws.append(contentsOf: generateLawsForState(stateModel))
         }
 
-        if let encoded = try? JSONEncoder().encode(allLaws) {
-            UserDefaults.standard.set(encoded, forKey: "laws")
+        persistStateData(states: newStates, laws: allLaws)
+    }
+
+    private func loadStatesFromDefaults() -> [StateModel] {
+        if let data = UserDefaults.standard.data(forKey: "states"),
+           let decoded = try? JSONDecoder().decode([StateModel].self, from: data) {
+            return decoded
+        }
+        return []
+    }
+
+    private func loadLawsFromDefaults() -> [LawModel] {
+        if let data = UserDefaults.standard.data(forKey: "laws"),
+           let decoded = try? JSONDecoder().decode([LawModel].self, from: data) {
+            return decoded
+        }
+        return []
+    }
+
+    @discardableResult
+    private func ensureAllStatesLoaded(states: inout [StateModel], laws: inout [LawModel]) -> Bool {
+        var didUpdate = false
+        let existingStateCodes = Set(states.map { $0.abbreviation })
+        var existingLawKeys = Set(laws.map { "\($0.stateCode)|\($0.title)" })
+        let timestamp = Date()
+        var appendedStates: [StateModel] = []
+
+        for stateInfo in StateDatabase.allStates where !existingStateCodes.contains(stateInfo.code) {
+            didUpdate = true
+
+            let stateModel = StateModel(name: stateInfo.name, abbreviation: stateInfo.code, lastUpdated: timestamp)
+            appendedStates.append(stateModel)
+
+            for law in generateLawsForState(stateModel) {
+                let key = "\(law.stateCode)|\(law.title)"
+                if !existingLawKeys.contains(key) {
+                    laws.append(law)
+                    existingLawKeys.insert(key)
+                }
+            }
+        }
+
+        if !appendedStates.isEmpty {
+            states.append(contentsOf: appendedStates)
+        }
+
+        return didUpdate
+    }
+
+    private func persistStateData(states: [StateModel], laws: [LawModel]) {
+        if let encodedStates = try? JSONEncoder().encode(states) {
+            UserDefaults.standard.set(encodedStates, forKey: "states")
+        }
+        if let encodedLaws = try? JSONEncoder().encode(laws) {
+            UserDefaults.standard.set(encodedLaws, forKey: "laws")
         }
     }
 
@@ -273,6 +310,8 @@ class DataController: ObservableObject {
             return "Florida has no statutory limit on security deposits. Deposits must be returned within 15 days if no deductions are made, or within 30 days with an itemized list of deductions."
         case "IL":
             return "Illinois has no statewide limit, but Chicago limits deposits to one month's rent. Deposits must be returned within 30-45 days depending on deductions. Interest may be required on deposits held for more than 6 months."
+        case "WI":
+            return "Wisconsin has no statewide cap on security deposits. Landlords must provide a check-in sheet at move-in and return deposits within 21 days after the tenant vacates, with an itemized list of deductions if any are taken."
         default:
             return "Security deposit regulations vary. Please check local laws."
         }
@@ -290,6 +329,8 @@ class DataController: ObservableObject {
             return "Florida requires: 3-day notice for non-payment (excluding weekends/holidays). 7-day notice for lease violations with opportunity to cure. 15-day notice for month-to-month tenancies."
         case "IL":
             return "Illinois requires: 5-day notice for non-payment. 10-day notice for lease violations. 30-day notice for month-to-month tenancies. Chicago has additional tenant protections."
+        case "WI":
+            return "Wisconsin requires: 5-day notice to pay or vacate for first non-payment or lease violation within 12 months (14-day with no right to cure on repeat). Month-to-month tenancies generally require 28-day notice to terminate."
         default:
             return "Eviction notice requirements vary by jurisdiction."
         }
@@ -307,6 +348,8 @@ class DataController: ObservableObject {
             return "Maximum speed limits: 70 mph on highways, 65 mph on rural interstates. Residential areas: 30 mph. School zones: 15-20 mph when lights are flashing."
         case "IL":
             return "Maximum speed limits: 70 mph on rural interstates, 55 mph in urban areas. Residential: 30 mph. School zones: 20 mph on school days."
+        case "WI":
+            return "Maximum speed limits: 70 mph on rural interstates and 65 mph on expressways. Other highways typically 55 mph. Urban and residential areas: 25-35 mph unless posted. School zones: 15 mph during school hours."
         default:
             return "Speed limits vary by road type and location."
         }
@@ -324,6 +367,8 @@ class DataController: ObservableObject {
             return "BAC limit: 0.08% (0.04% commercial drivers, 0.02% under 21). Penalties: First offense - up to 6 months jail, $500-2,000 fine, 180-365 day license suspension."
         case "IL":
             return "BAC limit: 0.08% (0.04% commercial drivers, zero tolerance under 21). Penalties: First offense - up to 1 year jail, up to $2,500 fine, 1-year license suspension."
+        case "WI":
+            return "BAC limit: 0.08% (0.04% commercial drivers, 0.00% for drivers under 21 under absolute sobriety law). First offense OWI is civil: forfeiture $150-$300, license revocation 6-9 months, ignition interlock if BAC ≥ 0.15%. Subsequent offenses carry criminal penalties."
         default:
             return "DUI laws and penalties vary by state."
         }
@@ -341,6 +386,8 @@ class DataController: ObservableObject {
             return "Florida minimum wage: $12.00 per hour (2024), increasing $1 annually until reaching $15.00 in 2026. Tipped employees: $8.98 per hour. Adjusted annually for inflation after 2026."
         case "IL":
             return "Illinois minimum wage: $14.00 per hour (2024), increasing to $15.00 in 2025. Chicago: $15.80 per hour (higher for large employers). Tipped employees: 60% of minimum wage."
+        case "WI":
+            return "Wisconsin minimum wage: $7.25 per hour (matching federal rate). Tipped employees: $2.33 per hour with tips making up the difference. Youth opportunity wage: $5.90 per hour for the first 90 days of work."
         default:
             return "Minimum wage rates vary. Check current local and state requirements."
         }
@@ -358,6 +405,8 @@ class DataController: ObservableObject {
             return "Follows federal law: 1.5x rate after 40 hours/week. No state-specific overtime laws. Manual laborers entitled to overtime regardless of salary level."
         case "IL":
             return "Overtime pay: 1.5x rate after 40 hours/week. No daily overtime requirements. Exemptions follow federal guidelines. Chicago has no additional overtime requirements."
+        case "WI":
+            return "Wisconsin follows federal overtime rules: 1.5x pay after 40 hours/week. Certain agricultural, executive, administrative, and professional employees are exempt."
         default:
             return "Overtime rules follow federal standards unless state law provides greater benefits."
         }
@@ -385,6 +434,8 @@ class DataController: ObservableObject {
             return "Arizona flat income tax: 2.5% on all income (2024). Recently simplified from progressive system. One of lowest state income tax rates. Maricopa County residents pay additional 0.7% for transportation. No local income taxes in most areas."
         case "MA":
             return "Massachusetts flat income tax: 5% on most income (2024). Recently reduced from 5.05%. Additional 4% surtax on income over $1M (total 9%). Short-term capital gains taxed at 8.5%. Long-term capital gains at 5%. No local income taxes."
+        case "WI":
+            return "Wisconsin state income tax: Progressive rates from 3.54% to 7.65% (2024). Brackets (single): up to $13,810 (3.54%), $13,811-$27,630 (4.65%), $27,631-$304,170 (5.3%), over $304,171 (7.65%). Counties do not levy additional income tax, but there is a separate 0.4% payroll deduction for unemployment insurance."
         default:
             return "State income tax varies. Check your specific state tax authority for current rates and brackets."
         }
@@ -412,6 +463,8 @@ class DataController: ObservableObject {
             return "Arizona sales tax: 5.6% state rate (called Transaction Privilege Tax). Cities and counties add 1.5-5.6%, making combined rates 5.6-11.2%. Phoenix: 8.6%, Tucson: 8.7%. Groceries exempt. Prescription drugs exempt. Rental cars taxed higher (combined can exceed 50%)."
         case "MA":
             return "Massachusetts sales tax: 6.25% statewide, no local additions. Clothing under $175 per item exempt. Groceries exempt. Prescription drugs exempt. Restaurant meals taxed. Alcohol taxed separately. Sales tax holidays offered occasionally."
+        case "WI":
+            return "Wisconsin sales tax: 5% statewide. Most counties add a 0.5% sales tax, making combined rates typically 5.5%. Select communities (Milwaukee, Wisconsin Dells) levy additional premier resort taxes up to 1.25% on certain sales. Groceries and prescription drugs are exempt."
         default:
             return "Sales tax varies by state and locality. Check your local tax authority for exact rates."
         }
@@ -469,6 +522,14 @@ class DataController: ObservableObject {
         case ("AZ", "sales-tax"): return "A.R.S. § 42-5061"
         case ("MA", "tax"): return "M.G.L. c. 62 § 4"
         case ("MA", "sales-tax"): return "M.G.L. c. 64H § 2"
+        case ("WI", "tenant"): return "Wis. Admin. Code ATCP 134.06"
+        case ("WI", "eviction"): return "Wis. Stat. § 704.17"
+        case ("WI", "traffic"): return "Wis. Stat. § 346.57"
+        case ("WI", "dui"): return "Wis. Stat. § 346.63"
+        case ("WI", "employment"): return "Wis. Stat. § 104.035"
+        case ("WI", "overtime"): return "Wis. Admin. Code DWD 274.03"
+        case ("WI", "tax"): return "Wis. Stat. § 71.06"
+        case ("WI", "sales-tax"): return "Wis. Stat. § 77.52"
         default: return "State Statute Reference"
         }
     }

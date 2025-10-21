@@ -79,7 +79,7 @@ struct SimpleOnboardingView: View {
         .padding()
         .onAppear {
             print("✅ DEBUG: SimpleOnboardingView appeared at \(Date())")
-            print("✅ DEBUG: UserProfileManager initialized: \(userProfileManager != nil)")
+            print("✅ DEBUG: UserProfileManager home state: \(userProfileManager.homeState)")
         }
     }
 }

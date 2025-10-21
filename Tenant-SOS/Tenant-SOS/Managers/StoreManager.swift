@@ -88,7 +88,7 @@ class StoreManager: ObservableObject {
         Task(priority: .background) {
             for await result in StoreKit.Transaction.updates {
                 do {
-                    let transaction = try await checkVerified(result)
+                    let transaction = try checkVerified(result)
                     await updatePurchasedProducts()
                     await transaction.finish()
                 } catch {

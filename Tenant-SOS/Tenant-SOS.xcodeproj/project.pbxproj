@@ -423,7 +423,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = S3QSL7JVL9;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Tenant-SOS/Info-TenantSOS.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Tenant-SOS";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
@@ -459,7 +459,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = S3QSL7JVL9;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Tenant-SOS/Info-TenantSOS.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Tenant-SOS";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";

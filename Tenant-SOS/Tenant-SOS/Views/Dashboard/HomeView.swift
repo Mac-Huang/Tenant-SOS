@@ -328,12 +328,17 @@ struct CategoryLawsView: View {
     let category: String
     @EnvironmentObject var dataController: DataController
     @EnvironmentObject var locationManager: LocationManager
+    @EnvironmentObject var userProfileManager: UserProfileManager
     @State private var isRefreshing = false
+    @State private var selectedStateCode: String?
+    @State private var didManuallySelectState = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                if let stateCode = getCurrentStateCode() {
+                stateSelectionSection
+
+                if let stateCode = stateForDisplay {
                     let laws = dataController.fetchLaws(for: stateCode, category: category)
 
                     if laws.isEmpty {
@@ -357,63 +362,18 @@ struct CategoryLawsView: View {
                     }
                 } else {
                     VStack(spacing: 20) {
-                        Image(systemName: "location.slash")
-                            .font(.system(size: 50))
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 48))
                             .foregroundColor(.orange)
 
-                        Text("Location Not Detected")
+                        Text("No State Data Available")
                             .font(.headline)
 
-                        Text("Enable location services to see laws for your current state")
+                        Text("We couldn't determine a state to show laws for. Try adding a home state in your profile.")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
-
-                        Button(action: {
-                            // Trigger location refresh
-                            isRefreshing = true
-                            print("🔘 User tapped Refresh Location button")
-                            locationManager.refreshLocation()
-
-                            // Reset after delay
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                isRefreshing = false
-                            }
-                        }) {
-                            HStack {
-                                if isRefreshing {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                        .scaleEffect(0.8)
-                                    Text("Refreshing...")
-                                } else {
-                                    Label("Refresh Location", systemImage: "location.fill")
-                                }
-                            }
-                            .frame(minWidth: 180)
-                            .padding()
-                            .background(isRefreshing ? Color.gray : Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                        }
-                        .disabled(isRefreshing)
-
-                        // Show authorization status hint
-                        if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
-                            VStack(spacing: 8) {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .foregroundColor(.orange)
-                                Text("Location permission denied")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text("Open Settings > Privacy > Location Services > Tenant SOS")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                            }
-                            .padding()
-                        }
                     }
                     .padding(.top, 50)
                 }
@@ -422,13 +382,265 @@ struct CategoryLawsView: View {
         }
         .navigationTitle(category)
         .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            initializeStateSelection()
+        }
+        .onReceive(dataController.$states) { _ in
+            initializeStateSelection()
+        }
+        .onChange(of: locationManager.currentState) { _, _ in
+            updateSelectionFromLocation()
+        }
+    }
+
+    private var stateSelectionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Viewing laws for", systemImage: "location.fill")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            Menu {
+                if let locationCode = getCurrentStateCode(),
+                   let model = dataController.fetchState(byCode: locationCode) {
+                    Button {
+                        selectState(model.abbreviation, manual: false)
+                    } label: {
+                        HStack {
+                            Text("\(model.name) • Current Location")
+                            Spacer()
+                            if isStateSelected(model.abbreviation) {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+
+                if !savedStateModels.isEmpty {
+                    Section("Saved States") {
+                        ForEach(savedStateModels, id: \.abbreviation) { state in
+                            Button {
+                                selectState(state.abbreviation, manual: true)
+                            } label: {
+                                HStack {
+                                    Text(state.name)
+                                    Spacer()
+                                    if isStateSelected(state.abbreviation) {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Section("All States") {
+                    ForEach(allStateModels, id: \.abbreviation) { state in
+                        Button {
+                            selectState(state.abbreviation, manual: true)
+                        } label: {
+                            HStack {
+                                Text(state.name)
+                                Spacer()
+                                if isStateSelected(state.abbreviation) {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(stateForDisplayName ?? "Select a State")
+                        .font(.headline)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(10)
+            }
+
+            if let infoMessage = stateInfoMessage {
+                Text(infoMessage)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            if locationManager.currentState == nil {
+                Button(action: refreshLocation) {
+                    HStack {
+                        if isRefreshing {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.8)
+                            Text("Refreshing...")
+                        } else {
+                            Label("Refresh Location", systemImage: "location.fill")
+                        }
+                    }
+                    .frame(minWidth: 180)
+                    .padding()
+                    .background(isRefreshing ? Color.gray : Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+                .disabled(isRefreshing)
+
+                if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
+                    VStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundColor(.orange)
+                        Text("Location permission denied")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text("Open Settings > Privacy > Location Services > Tenant SOS")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 4)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+
+    private var savedStateModels: [StateModel] {
+        var models: [StateModel] = []
+
+        if let homeModel = stateModel(for: userProfileManager.homeState) {
+            models.append(homeModel)
+        }
+
+        for state in userProfileManager.frequentStates {
+            if let model = stateModel(for: state),
+               !models.contains(where: { $0.abbreviation == model.abbreviation }) {
+                models.append(model)
+            }
+        }
+
+        return models
+    }
+
+    private var allStateModels: [StateModel] {
+        dataController.fetchStates()
+    }
+
+    private var stateForDisplay: String? {
+        if let selectedStateCode {
+            return selectedStateCode
+        }
+        return effectiveStateCode
+    }
+
+    private var stateForDisplayName: String? {
+        guard let code = stateForDisplay else { return nil }
+        return stateDisplayName(for: code)
+    }
+
+    private var effectiveStateCode: String? {
+        if !didManuallySelectState,
+           let currentState = getCurrentStateCode() {
+            return currentState
+        }
+
+        if let homeStateCode {
+            return homeStateCode
+        }
+
+        return dataController.fetchStates().first?.abbreviation
+    }
+
+    private var homeStateCode: String? {
+        stateCode(from: userProfileManager.homeState)
+    }
+
+    private var stateInfoMessage: String? {
+        if locationManager.currentState == nil {
+            if let name = stateForDisplayName {
+                return "Location not detected. Showing laws for \(name)."
+            } else {
+                return "Location not detected. Select a state to view laws."
+            }
+        }
+
+        if let locationCode = getCurrentStateCode(),
+           let selectedCode = stateForDisplay,
+           locationCode != selectedCode {
+            return "Showing laws for \(stateDisplayName(for: selectedCode)) instead of your current location."
+        }
+
+        return nil
+    }
+
+    private func initializeStateSelection() {
+        if selectedStateCode == nil,
+           let code = effectiveStateCode {
+            selectedStateCode = code
+        }
+    }
+
+    private func updateSelectionFromLocation() {
+        guard !didManuallySelectState else { return }
+        if let code = getCurrentStateCode() {
+            selectedStateCode = code
+        }
+    }
+
+    private func selectState(_ code: String, manual: Bool) {
+        selectedStateCode = code
+        didManuallySelectState = manual
+    }
+
+    private func refreshLocation() {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        print("🔘 User tapped Refresh Location button")
+        locationManager.refreshLocation()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            isRefreshing = false
+        }
+    }
+
+    private func isStateSelected(_ code: String) -> Bool {
+        stateForDisplay == code
+    }
+
+    private func stateModel(for nameOrCode: String) -> StateModel? {
+        guard !nameOrCode.isEmpty else { return nil }
+        let states = dataController.fetchStates()
+
+        if nameOrCode.count == 2,
+           let match = states.first(where: { $0.abbreviation.caseInsensitiveCompare(nameOrCode) == .orderedSame }) {
+            return match
+        }
+
+        return states.first { $0.name.caseInsensitiveCompare(nameOrCode) == .orderedSame }
+    }
+
+    private func stateDisplayName(for code: String) -> String {
+        dataController.fetchState(byCode: code)?.name ?? code
+    }
+
+    private func stateCode(from nameOrCode: String) -> String? {
+        guard !nameOrCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        if nameOrCode.count == 2 {
+            return nameOrCode.uppercased()
+        }
+
+        return dataController.fetchStates().first {
+            $0.name.caseInsensitiveCompare(nameOrCode) == .orderedSame
+        }?.abbreviation
     }
 
     private func getCurrentStateCode() -> String? {
         guard let currentStateName = locationManager.currentState else { return nil }
-        return dataController.fetchStates().first { state in
-            state.name == currentStateName || state.abbreviation == currentStateName
-        }?.abbreviation
+        return stateCode(from: currentStateName)
     }
 }
 

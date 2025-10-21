@@ -53,9 +53,14 @@ struct EditableProfileView: View {
                                     .font(.caption)
                                     .foregroundColor(.blue)
                             }
-                            .onChange(of: selectedPhotoItem) { newItem in
+                            .onChange(of: selectedPhotoItem) { _, newItem in
+                                guard let newItem else {
+                                    profileImage = nil
+                                    return
+                                }
+
                                 Task {
-                                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+                                    if let data = try? await newItem.loadTransferable(type: Data.self),
                                        let image = UIImage(data: data) {
                                         profileImage = image
                                         saveImageToUserDefaults(image)

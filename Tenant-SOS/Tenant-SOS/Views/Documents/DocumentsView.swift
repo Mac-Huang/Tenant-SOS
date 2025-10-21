@@ -251,7 +251,7 @@ struct DocumentFormView: View {
     }
 
     private func generateDocument() {
-        if let document = documentGenerator.generateDocument(
+        if documentGenerator.generateDocument(
             template: template,
             formData: formData,
             state: locationManager.currentState ?? "Unknown"

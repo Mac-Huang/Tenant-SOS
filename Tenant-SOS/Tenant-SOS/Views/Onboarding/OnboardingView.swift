@@ -291,9 +291,9 @@ struct ProfileSetupView: View {
                         Label("States You Visit", systemImage: "airplane")
                             .font(.headline)
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(states.filter { $0 != homeState }, id: \.self) { state in
-                                HStack {
+                        ScrollView(.vertical, showsIndicators: true) {
+                            LazyVStack(alignment: .leading, spacing: 8) {
+                                ForEach(states.filter { $0 != homeState }, id: \.self) { state in
                                     Button(action: {
                                         if frequentStates.contains(state) {
                                             frequentStates.remove(state)
@@ -310,11 +310,13 @@ struct ProfileSetupView: View {
 
                                             Spacer()
                                         }
+                                        .padding(.vertical, 4)
                                     }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .padding(.vertical, 4)
                             }
                         }
+                        .frame(maxHeight: 220)
                         .padding()
                         .background(Color(.systemGray6))
                         .cornerRadius(8)

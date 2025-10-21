@@ -20,7 +20,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             let granted = try await notificationCenter.requestAuthorization(options: [.alert, .badge, .sound])
             if granted {
                 authorizationStatus = .authorized
-                await UIApplication.shared.registerForRemoteNotifications()
+                await MainActor.run {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
             } else {
                 authorizationStatus = .denied
             }

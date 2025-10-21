@@ -2,6 +2,7 @@ import CoreLocation
 import Combine
 import SwiftUI
 import UserNotifications
+import MapKit
 
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
@@ -214,13 +215,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         currentGeocodingTask = Task {
             do {
                 print("🔄 Starting geocoding request...")
-                let placemarks = try await geocoder.reverseGeocodeLocation(location)
-                print("✅ Geocoding response received, placemarks count: \(placemarks.count)")
-
-                guard let placemark = placemarks.first else {
-                    print("⚠️ No placemarks found")
-                    return
-                }
+                let placemark = try await fetchPlacemark(for: location)
 
                 print("📦 Placemark details:")
                 print("   - administrativeArea: \(placemark.administrativeArea ?? "nil")")
@@ -255,6 +250,26 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                     self.currentCity = nil
                 }
             }
+        }
+    }
+
+    private func fetchPlacemark(for location: CLLocation) async throws -> CLPlacemark {
+        if #available(iOS 18.0, *) {
+            var request = MKReverseGeocodingRequest(location: location)
+            request.preferredLocale = Locale.current
+            let response = try await request.response()
+
+            if let placemark = response.mapItems.first?.placemark {
+                return placemark
+            }
+
+            throw GeocodingError.noPlacemark
+        } else {
+            let placemarks = try await geocoder.reverseGeocodeLocation(location)
+            if let placemark = placemarks.first {
+                return placemark
+            }
+            throw GeocodingError.noPlacemark
         }
     }
 
@@ -348,4 +363,8 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         return nil
     }
+}
+
+private enum GeocodingError: Error {
+    case noPlacemark
 }
